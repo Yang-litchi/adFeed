@@ -24,7 +24,8 @@ fun SmallImageCard(
     ad: AdItem,
     onLikeClick: () -> Unit,
     onCollectClick: () -> Unit,
-    onCardClick: () -> Unit
+    onCardClick: () -> Unit,
+    onTagClick: (String) -> Unit = {}
 ) {
     Card(
         modifier = Modifier
@@ -65,7 +66,9 @@ fun SmallImageCard(
                 if (ad.tags.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        items(ad.tags) { tag -> TagChip(tag) }
+                        items(ad.tags) { tag ->
+                            TagChip(tag = tag, onClick = { onTagClick(tag) })
+                        }
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))

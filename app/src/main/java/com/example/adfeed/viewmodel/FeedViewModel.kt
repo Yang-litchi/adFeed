@@ -23,31 +23,55 @@ class FeedViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(FeedUiState())
     val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
 
+    // 本地点赞/收藏状态持久化，key=adId
+    private val localStates = HashMap<String, LocalAdState>()
+
+    private data class LocalAdState(
+        val isLiked: Boolean,
+        val likeCount: Int,
+        val isCollected: Boolean
+    )
+
     private var currentChannel = "精选"
     private var currentPage = 0
-    private val pageSize = 4
+    private val pageSize = 6
+    // 当前频道的随机顺序池
+    private var shuffledPool: List<AdItem> = emptyList()
 
     init {
+        shuffledPool = buildPool(currentChannel)
         loadAds()
+    }
+
+    private fun buildPool(channel: String): List<AdItem> {
+        return MockData.getByChannel(channel).shuffled()
+    }
+
+    private fun mergeLocalState(ad: AdItem): AdItem {
+        val state = localStates[ad.id] ?: return ad
+        return ad.copy(
+            isLiked = state.isLiked,
+            likeCount = state.likeCount,
+            isCollected = state.isCollected
+        )
     }
 
     fun loadAds() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, error = null) }
-            delay(600) // 模拟网络延迟
-            val allData = MockData.getByChannel(currentChannel)
+            delay(600)
             val start = currentPage * pageSize
-            val end = minOf(start + pageSize, allData.size)
-            if (start >= allData.size) {
+            val end = minOf(start + pageSize, shuffledPool.size)
+            if (start >= shuffledPool.size) {
                 _uiState.update { it.copy(isLoading = false, hasMore = false) }
                 return@launch
             }
-            val newAds = allData.subList(start, end)
+            val newAds = shuffledPool.subList(start, end).map { mergeLocalState(it) }
             _uiState.update { state ->
                 state.copy(
                     ads = if (currentPage == 0) newAds else state.ads + newAds,
                     isLoading = false,
-                    hasMore = end < allData.size
+                    hasMore = end < shuffledPool.size
                 )
             }
             currentPage++
@@ -55,6 +79,8 @@ class FeedViewModel : ViewModel() {
     }
 
     fun refresh() {
+        // 刷新时重新shuffle，呈现不同顺序
+        shuffledPool = buildPool(currentChannel)
         currentPage = 0
         loadAds()
     }
@@ -67,6 +93,7 @@ class FeedViewModel : ViewModel() {
     fun switchChannel(channel: String) {
         if (currentChannel == channel) return
         currentChannel = channel
+        shuffledPool = buildPool(channel)
         currentPage = 0
         loadAds()
     }
@@ -74,10 +101,12 @@ class FeedViewModel : ViewModel() {
     fun toggleLike(adId: String) {
         _uiState.update { state ->
             state.copy(ads = state.ads.map { ad ->
-                if (ad.id == adId) ad.copy(
-                    isLiked = !ad.isLiked,
-                    likeCount = if (ad.isLiked) ad.likeCount - 1 else ad.likeCount + 1
-                ) else ad
+                if (ad.id == adId) {
+                    val newLiked = !ad.isLiked
+                    val newCount = if (newLiked) ad.likeCount + 1 else ad.likeCount - 1
+                    localStates[adId] = LocalAdState(newLiked, newCount, ad.isCollected)
+                    ad.copy(isLiked = newLiked, likeCount = newCount)
+                } else ad
             })
         }
     }
@@ -85,7 +114,11 @@ class FeedViewModel : ViewModel() {
     fun toggleCollect(adId: String) {
         _uiState.update { state ->
             state.copy(ads = state.ads.map { ad ->
-                if (ad.id == adId) ad.copy(isCollected = !ad.isCollected) else ad
+                if (ad.id == adId) {
+                    val newCollected = !ad.isCollected
+                    localStates[adId] = LocalAdState(ad.isLiked, ad.likeCount, newCollected)
+                    ad.copy(isCollected = newCollected)
+                } else ad
             })
         }
     }
