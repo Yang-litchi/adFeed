@@ -1,20 +1,72 @@
 # adFeed
 
-Android 广告流（Feed）展示应用，使用 Jetpack Compose 开发。
+Android 广告信息流（Feed）应用，基于 Jetpack Compose 开发，模拟现代内容推荐平台的信息流浏览体验。
 
 ## 项目功能
 
-当前已实现：
+### 信息流浏览
 
-* Feed 流页面展示
+* 精选频道
+* 电商频道
+* 本地频道
+* 下拉刷新
+* 分页加载
 * 大图广告卡片
 * 小图广告卡片
 * 视频广告卡片
+
+### Tag智能筛选
+
+* 顶部筛选面板
+* 频道内高频Tag推荐
+* 多Tag组合筛选
+* 卡片Tag点击快速筛选
+* 自定义Tag输入
+* 一键清空筛选条件
+
+### 用户交互
+
 * 点赞功能
 * 收藏功能
-* 标签展示
-* 广告详情页
-* Mock 数据展示
+* 点赞数实时更新
+* 收藏状态切换
+* 状态本地持久化
+
+### AI入口
+
+* 顶部AI助手入口
+* AI聊天页面框架
+* 左滑快速进入AI页面
+
+### 启动体验
+
+* 动态启动页动画
+* Logo弹跳动画
+* 标题渐显动画
+* 页面淡出跳转
+
+---
+
+## 项目架构
+
+采用 MVVM 架构设计。
+
+```text
+UI Layer
+│
+├── FeedScreen
+├── DetailScreen
+├── AiChatScreen
+│
+ViewModel Layer
+│
+└── FeedViewModel
+│
+Data Layer
+│
+├── MockData
+└── AdItem
+```
 
 ---
 
@@ -22,75 +74,69 @@ Android 广告流（Feed）展示应用，使用 Jetpack Compose 开发。
 
 ### data
 
-#### data/model
+#### model
 
-`AdIterm.kt`
+* AdItem.kt
 
-广告数据模型，定义广告对象的数据结构。
+广告数据模型。
 
-#### data/repository
+#### repository
 
-`Mockdata.kt`
+* MockData.kt
 
-模拟广告数据源，用于开发和测试。
+模拟广告数据源。
 
 ---
 
 ### ui
 
-#### ui/feed
+#### feed
 
-Feed 页面相关组件。
+* FeedScreen.kt
 
-* `FeedScreen.kt`
+  * 信息流主页
+  * Tab切换
+  * 筛选面板
+  * 分页与刷新
 
-    * 信息流主页面
+* LargeImageCard.kt
 
-* `LargeImageCard.kt`
+  * 大图广告卡片
 
-    * 大图广告卡片
+* SmallImageCard.kt
 
-* `SmallImageCard.kt`
+  * 小图广告卡片
 
-    * 小图广告卡片
+* VideoCard.kt
 
-* `VideoCard.kt`
+  * 视频广告卡片
 
-    * 视频广告卡片
+#### detail
 
-#### ui/detail
+* DetailScreen.kt
 
-* `DetailScreen.kt`
+  * 广告详情页
 
-    * 广告详情页面
+#### ai
 
-#### ui/components
+* AiChatScreen.kt
 
-通用组件。
+  * AI聊天页面框架
 
-* `LikeButton.kt`
+#### components
 
-    * 点赞按钮
+* LikeButton.kt
+* TagChip.kt
 
-* `TagChip.kt`
+公共组件库。
 
-    * 标签组件
+#### theme
 
-#### ui/theme
+* Color.kt
+* Theme.kt
+* Type.kt
 
-Compose 主题配置(未修改)。
-
-* `Color.kt`
-
-    * 颜色定义
-
-* `Theme.kt`
-
-    * Material Theme 配置
-
-* `Type.kt`
-
-    * 字体配置
+Compose主题配置。
 
 ---
 
@@ -100,20 +146,13 @@ Compose 主题配置(未修改)。
 
 负责：
 
-* 广告列表状态管理
+* 数据加载
+* 频道切换
+* Tag筛选
 * 点赞逻辑
 * 收藏逻辑
-
----
-
-### MainActivity.kt
-
-应用入口。
-
-负责：
-
-* 初始化 Compose
-* 页面导航入口
+* 分页逻辑
+* 本地状态维护
 
 ---
 
@@ -126,6 +165,7 @@ Compose 主题配置(未修改)。
 * Navigation Compose
 * Coil
 * Media3 ExoPlayer
+* Coroutines
 
 ---
 
@@ -138,19 +178,47 @@ Compose 主题配置(未修改)。
 
 ---
 
-## 当前版本
+## 版本记录
 
-v1.0
+### v1.0
 
-已完成基础广告流展示功能。
+* 基础信息流展示
+* 点赞功能
+* 收藏功能
+* 视频广告卡片
+* 广告详情页
+
+### v1.1
+
+新增：
+
+* Tag筛选系统
+* 多Tag组合筛选
+* 自定义Tag
+* 筛选面板动画
+* AI聊天页面框架
+* 启动页动画
+* 左右滑动切换频道
+
+优化：
+
+* 下拉刷新逻辑
+* 数据随机化展示
+* 点赞状态持久化
+* 收藏状态持久化
+* TopBar布局重构
+
+修复：
+
+* 首次启动列表为空的问题
 
 ---
-## 下一步更新需要解决的问题：
 
-### 点赞收藏在后刷新/切换页面后状态复原
-  
-* 原因：现在 refresh() 和 switchChannel() 直接重新加载MockData，覆盖了本地状态。需要B在Repository层做本地状态持久化，把点赞/收藏状态存在内存Map里，加载新数据时merge回去。
+## 后续规划
 
-### 增加Tag点击筛选，卡片上的Tag也能点击触发筛选
-
-* 需要修改多个布局
+* AI摘要生成
+* AI对话功能
+* 网络数据接口接入
+* 用户登录系统
+* 云端点赞收藏同步
+* 推荐算法优化
