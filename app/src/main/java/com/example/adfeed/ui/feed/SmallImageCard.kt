@@ -63,6 +63,29 @@ fun SmallImageCard(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis
                 )
+                ad.aiInfo?.summary?.let { summary ->
+                    Spacer(modifier = Modifier.height(6.dp))
+                    Surface(
+                        color = Color(0xFFF0EEFF),
+                        shape = RoundedCornerShape(6.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = "✨", style = MaterialTheme.typography.labelSmall)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = summary,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color(0xFF6650A4),
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
                 if (ad.tags.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(4.dp))
                     LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {

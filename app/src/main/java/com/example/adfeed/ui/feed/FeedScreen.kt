@@ -2,8 +2,8 @@ package com.example.adfeed.ui.feed
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -18,7 +18,6 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FilterList
-import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
@@ -34,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
 import com.example.adfeed.data.model.AdItem
 import com.example.adfeed.data.model.AdType
+import com.example.adfeed.ui.ai.AiFloatingBall
 import com.example.adfeed.viewmodel.FeedViewModel
 
 val CHANNELS = listOf("精选", "电商", "本地")
@@ -43,8 +43,7 @@ private const val MAX_VISIBLE_TAGS = 10
 @Composable
 fun FeedScreen(
     viewModel: FeedViewModel,
-    onAdClick: (AdItem) -> Unit,
-    onAiClick: () -> Unit
+    onAdClick: (AdItem) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     var selectedIndex by remember { mutableIntStateOf(0) }
@@ -54,34 +53,24 @@ fun FeedScreen(
     var customTagInput by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
 
-    // page 0 = AI，page 1/2/3 = 精选/电商/本地
-    val pagerState = rememberPagerState(initialPage = 1, pageCount = { 4 })
+    // 3页对应3个频道
+    val pagerState = rememberPagerState(initialPage = 0, pageCount = { 3 })
 
-    // Pager滑动 → 同步Tab
+    // Pager滑动 → 同步Tab和频道
     LaunchedEffect(pagerState.currentPage) {
-        when (pagerState.currentPage) {
-            0 -> {
-                // 滑到最左触发AI，然后弹回page1防止停留在空白页
-                onAiClick()
-                pagerState.scrollToPage(1)
-            }
-            else -> {
-                val channelIndex = pagerState.currentPage - 1
-                if (selectedIndex != channelIndex) {
-                    selectedIndex = channelIndex
-                    selectedTags = setOf()
-                    filterExpanded = false
-                    viewModel.switchChannel(CHANNELS[channelIndex])
-                }
-            }
+        val channelIndex = pagerState.currentPage
+        if (selectedIndex != channelIndex) {
+            selectedIndex = channelIndex
+            selectedTags = setOf()
+            filterExpanded = false
+            viewModel.switchChannel(CHANNELS[channelIndex])
         }
     }
 
     // Tab点击 → 同步Pager
     LaunchedEffect(selectedIndex) {
-        val targetPage = selectedIndex + 1
-        if (pagerState.currentPage != targetPage) {
-            pagerState.animateScrollToPage(targetPage)
+        if (pagerState.currentPage != selectedIndex) {
+            pagerState.animateScrollToPage(selectedIndex)
         }
     }
 
@@ -109,58 +98,26 @@ fun FeedScreen(
 
         Column(modifier = Modifier.fillMaxSize()) {
 
-            // ── TopBar ──
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(MaterialTheme.colorScheme.surface),
-                verticalAlignment = Alignment.CenterVertically
+            // ── TabRow 占满 ──
+            TabRow(
+                selectedTabIndex = selectedIndex,
+                modifier = Modifier.fillMaxWidth(),
+                containerColor = MaterialTheme.colorScheme.surface
             ) {
-                // 左侧机器人图标
-                IconButton(
-                    onClick = onAiClick,
-                    modifier = Modifier
-                        .padding(start = 4.dp)
-                        .size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.SmartToy,
-                        contentDescription = "AI助手",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-
-                // 居中Tab
-                TabRow(
-                    selectedTabIndex = selectedIndex,
-                    modifier = Modifier.weight(1f),
-                    containerColor = MaterialTheme.colorScheme.surface
-                ) {
-                    CHANNELS.forEachIndexed { index, channel ->
-                        Tab(
-                            selected = selectedIndex == index,
-                            onClick = {
-                                selectedIndex = index
-                                selectedTags = setOf()
-                                filterExpanded = false
-                                viewModel.switchChannel(channel)
-                            },
-                            modifier = Modifier.height(52.dp)
-                        ) {
-                            Text(
-                                text = channel,
-                                style = MaterialTheme.typography.titleSmall
-                            )
-                        }
+                CHANNELS.forEachIndexed { index, channel ->
+                    Tab(
+                        selected = selectedIndex == index,
+                        onClick = {
+                            selectedIndex = index
+                            selectedTags = setOf()
+                            filterExpanded = false
+                            viewModel.switchChannel(channel)
+                        },
+                        modifier = Modifier.height(52.dp)
+                    ) {
+                        Text(text = channel, style = MaterialTheme.typography.titleSmall)
                     }
                 }
-
-                // 右侧等量占位
-                Spacer(
-                    modifier = Modifier
-                        .padding(end = 4.dp)
-                        .size(48.dp)
-                )
             }
 
             HorizontalDivider()
@@ -195,10 +152,7 @@ fun FeedScreen(
                                 selected = true,
                                 onClick = { selectedTags = selectedTags - tag },
                                 label = {
-                                    Text(
-                                        "#$tag",
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
+                                    Text("#$tag", style = MaterialTheme.typography.labelSmall)
                                 },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -224,109 +178,105 @@ fun FeedScreen(
                 }
             }
 
-            // ── HorizontalPager（列表区域）──
+            // ── HorizontalPager ──
             HorizontalPager(
                 state = pagerState,
                 modifier = Modifier.fillMaxSize(),
                 userScrollEnabled = true
-            ) { page ->
-                if (page == 0) {
-                    Box(modifier = Modifier.fillMaxSize())
-                } else {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .pullRefresh(pullRefreshState)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .pullRefresh(pullRefreshState)
+                ) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier.fillMaxSize()
                     ) {
-                        LazyColumn(
-                            state = listState,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            if (filteredAds.isEmpty() && !uiState.isLoading) {
-                                item {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(64.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text("没有匹配的广告", color = Color.Gray)
-                                        if (selectedTags.isNotEmpty()) {
-                                            Spacer(modifier = Modifier.height(8.dp))
-                                            TextButton(onClick = { selectedTags = setOf() }) {
-                                                Text("清空筛选")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            items(items = filteredAds, key = { it.id }) { ad ->
-                                AdCardDispatcher(
-                                    ad = ad,
-                                    onLikeClick = { viewModel.toggleLike(ad.id) },
-                                    onCollectClick = { viewModel.toggleCollect(ad.id) },
-                                    onCardClick = {
-                                        viewModel.recordClick(ad.id)
-                                        onAdClick(ad)
-                                    },
-                                    onTagClick = { tag ->
-                                        selectedTags = if (tag in selectedTags)
-                                            selectedTags - tag
-                                        else
-                                            selectedTags + tag
-                                    }
-                                )
-                            }
-
+                        if (filteredAds.isEmpty() && !uiState.isLoading) {
                             item {
-                                if (uiState.hasMore && uiState.ads.isNotEmpty()) {
-                                    LaunchedEffect(uiState.ads.size) { viewModel.loadMore() }
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        CircularProgressIndicator(modifier = Modifier.size(24.dp))
-                                    }
-                                } else if (!uiState.hasMore) {
-                                    Text(
-                                        text = "已经到底了～",
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp),
-                                        textAlign = TextAlign.Center,
-                                        color = Color.Gray,
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
-                            }
-
-                            if (uiState.error != null) {
-                                item {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(32.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text("加载失败", color = Color.Gray)
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(64.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("没有匹配的广告", color = Color.Gray)
+                                    if (selectedTags.isNotEmpty()) {
                                         Spacer(modifier = Modifier.height(8.dp))
-                                        Button(onClick = { viewModel.refresh() }) {
-                                            Text("重试")
+                                        TextButton(onClick = { selectedTags = setOf() }) {
+                                            Text("清空筛选")
                                         }
                                     }
                                 }
                             }
                         }
 
-                        PullRefreshIndicator(
-                            refreshing = uiState.isLoading,
-                            state = pullRefreshState,
-                            modifier = Modifier.align(Alignment.TopCenter)
-                        )
+                        items(items = filteredAds, key = { it.id }) { ad ->
+                            AdCardDispatcher(
+                                ad = ad,
+                                onLikeClick = { viewModel.toggleLike(ad.id) },
+                                onCollectClick = { viewModel.toggleCollect(ad.id) },
+                                onCardClick = {
+                                    viewModel.recordClick(ad.id)
+                                    onAdClick(ad)
+                                },
+                                onTagClick = { tag ->
+                                    selectedTags = if (tag in selectedTags)
+                                        selectedTags - tag
+                                    else
+                                        selectedTags + tag
+                                }
+                            )
+                        }
+
+                        item {
+                            if (uiState.hasMore && uiState.ads.isNotEmpty()) {
+                                LaunchedEffect(uiState.ads.size) { viewModel.loadMore() }
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator(modifier = Modifier.size(24.dp))
+                                }
+                            } else if (!uiState.hasMore) {
+                                Text(
+                                    text = "已经到底了～",
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    textAlign = TextAlign.Center,
+                                    color = Color.Gray,
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
+                        }
+
+                        if (uiState.error != null) {
+                            item {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(32.dp),
+                                    horizontalAlignment = Alignment.CenterHorizontally
+                                ) {
+                                    Text("加载失败", color = Color.Gray)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Button(onClick = { viewModel.refresh() }) {
+                                        Text("重试")
+                                    }
+                                }
+                            }
+                        }
                     }
+
+                    PullRefreshIndicator(
+                        refreshing = uiState.isLoading,
+                        state = pullRefreshState,
+                        modifier = Modifier.align(Alignment.TopCenter)
+                    )
                 }
             }
         }
@@ -372,10 +322,7 @@ fun FeedScreen(
                                             selectedTags + tag
                                     },
                                     label = {
-                                        Text(
-                                            "#$tag",
-                                            style = MaterialTheme.typography.labelSmall
-                                        )
+                                        Text("#$tag", style = MaterialTheme.typography.labelSmall)
                                     },
                                     colors = FilterChipDefaults.filterChipColors(
                                         selectedContainerColor = MaterialTheme.colorScheme.primary,
@@ -444,6 +391,9 @@ fun FeedScreen(
                 }
             }
         }
+
+        // ── 悬浮AI球 ──
+        AiFloatingBall(onAdClick = onAdClick)
     }
 }
 

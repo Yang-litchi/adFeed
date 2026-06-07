@@ -28,15 +28,23 @@ import com.example.adfeed.ui.components.LikeButton
 import com.example.adfeed.ui.components.TagChip
 import com.example.adfeed.viewmodel.FeedViewModel
 
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.adfeed.viewmodel.DetailViewModel
+
+import com.example.adfeed.ui.ai.AiChatOverlay
+import com.example.adfeed.data.repository.MockData
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
     adId: String,
     viewModel: FeedViewModel,
+    detailViewModel: DetailViewModel = viewModel(),
     onBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val ad = uiState.ads.find { it.id == adId }
+        ?: MockData.allAds.find { it.id == adId }
+    var showAiChat by remember { mutableStateOf(false) }
 
     if (ad == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -66,6 +74,13 @@ fun DetailScreen(
             )
         }
     ) { paddingValues ->
+
+        val detailUiState by detailViewModel.uiState.collectAsState()
+
+        LaunchedEffect(ad.id) {
+            if (ad.aiInfo != null) detailViewModel.loadIntro(ad)
+        }
+
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -94,30 +109,62 @@ fun DetailScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
-                    // AI摘要
-                    if (!ad.summary.isNullOrEmpty()) {
-                        Card(
-                            colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.secondaryContainer
-                            ),
-                            shape = RoundedCornerShape(8.dp),
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Row(modifier = Modifier.padding(12.dp)) {
-                                Text("🤖 ")
-                                Text(
-                                    text = ad.summary,
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-
                     // 标签
                     if (ad.tags.isNotEmpty()) {
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             items(ad.tags) { tag -> TagChip(tag) }
+                        }
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+
+                    // AI介绍
+                    if (ad.aiInfo != null) {
+                        Surface(
+                            color = Color(0xFFF0EEFF),
+                            shape = RoundedCornerShape(10.dp),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Text(
+                                        text = "✨ AI 介绍",
+                                        style = MaterialTheme.typography.labelMedium,
+                                        color = Color(0xFF6650A4)
+                                    )
+                                    if (detailUiState.isLoading || detailUiState.isTyping) {
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        CircularProgressIndicator(
+                                            modifier = Modifier.size(12.dp),
+                                            strokeWidth = 1.5.dp,
+                                            color = Color(0xFF6650A4)
+                                        )
+                                    }
+                                }
+                                Spacer(modifier = Modifier.height(6.dp))
+                                when {
+                                    detailUiState.error != null -> {
+                                        Text(
+                                            text = detailUiState.error!!,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                    detailUiState.displayedText.isNotEmpty() -> {
+                                        Text(
+                                            text = detailUiState.displayedText,
+                                            style = MaterialTheme.typography.bodyMedium,
+                                            color = Color(0xFF4A4060)
+                                        )
+                                    }
+                                    detailUiState.isLoading -> {
+                                        Text(
+                                            text = "正在生成...",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = Color.Gray
+                                        )
+                                    }
+                                }
+                            }
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
@@ -170,8 +217,30 @@ fun DetailScreen(
                             )
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    //唤起ai助手
+                    Button(
+                        onClick = { showAiChat = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = Color(0xFF6650A4)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Text("✨ 问问AI顾问")
+                    }
+
+                    Spacer(modifier = Modifier.height(24.dp))
                 }
             }
+        }
+        if (showAiChat) {
+            AiChatOverlay(
+                ad = ad,
+                onDismiss = { showAiChat = false }
+            )
         }
     }
 }

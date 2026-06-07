@@ -14,7 +14,9 @@ data class AdItem(
     val exposureCount: Int = 0,
     val clickCount: Int = 0,
     val summary: String? = null,
-    val tags: List<String> = emptyList()
+    val tags: List<String> = emptyList(),
+    //AI增强数据
+    val aiInfo: AiInfo? = null
 )
 
 enum class AdType {

@@ -6,6 +6,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -17,14 +18,11 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
-import com.example.adfeed.ui.ai.AiChatScreen
 import com.example.adfeed.ui.detail.DetailScreen
 import com.example.adfeed.ui.feed.FeedScreen
+import com.example.adfeed.ui.splash.SplashScreen
 import com.example.adfeed.ui.theme.AdFeedTheme
 import com.example.adfeed.viewmodel.FeedViewModel
-
-import com.example.adfeed.ui.splash.SplashScreen
-import androidx.compose.animation.fadeOut
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -52,12 +50,9 @@ fun AppNavigation() {
         navController = navController,
         startDestination = "splash"
     ) {
-        // 启动页
         composable(
             route = "splash",
-            exitTransition = {
-                fadeOut(animationSpec = tween(300))
-            }
+            exitTransition = { fadeOut(animationSpec = tween(300)) }
         ) {
             SplashScreen(
                 onFinished = {
@@ -68,16 +63,13 @@ fun AppNavigation() {
             )
         }
 
-        // 信息流主页
         composable("feed") {
             FeedScreen(
                 viewModel = feedViewModel,
-                onAdClick = { ad -> navController.navigate("detail/${ad.id}") },
-                onAiClick = { navController.navigate("ai") }
+                onAdClick = { ad -> navController.navigate("detail/${ad.id}") }
             )
         }
 
-        // 广告详情页
         composable(
             route = "detail/{adId}",
             arguments = listOf(navArgument("adId") { type = NavType.StringType }),
@@ -93,22 +85,6 @@ fun AppNavigation() {
                 adId = adId,
                 viewModel = feedViewModel,
                 onBack = { navController.popBackStack() }
-            )
-        }
-
-        // AI对话页
-        composable(
-            route = "ai",
-            enterTransition = {
-                slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300))
-            },
-            exitTransition = {
-                slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300))
-            }
-        ) {
-            AiChatScreen(
-                onClose = { navController.popBackStack() },
-                onSettings = { }
             )
         }
     }
