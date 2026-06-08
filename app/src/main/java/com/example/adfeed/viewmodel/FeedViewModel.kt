@@ -3,7 +3,11 @@ package com.example.adfeed.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.adfeed.data.model.AdItem
+import com.example.adfeed.data.model.EventType
+import com.example.adfeed.data.model.StatisticEvent
+import com.example.adfeed.data.repository.FakeStatisticsRepository
 import com.example.adfeed.data.repository.MockData
+import com.example.adfeed.data.repository.StatisticsRepository
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -22,6 +26,9 @@ class FeedViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow(FeedUiState())
     val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
+
+    // 统计数据仓库（接口抽象，当前内存实现，后续可替换Room）
+    private val statisticsRepository: StatisticsRepository = FakeStatisticsRepository
 
     // 本地点赞/收藏状态持久化，key=adId
     private val localStates = HashMap<String, LocalAdState>()
@@ -129,6 +136,8 @@ class FeedViewModel : ViewModel() {
                 if (ad.id == adId) ad.copy(clickCount = ad.clickCount + 1) else ad
             })
         }
+        // 同时写入统计仓库
+        recordStatEvent(adId, EventType.CLICK)
     }
 
     fun recordExposure(adId: String) {
@@ -136,6 +145,24 @@ class FeedViewModel : ViewModel() {
             state.copy(ads = state.ads.map { ad ->
                 if (ad.id == adId) ad.copy(exposureCount = ad.exposureCount + 1) else ad
             })
+        }
+        // 同时写入统计仓库
+        recordStatEvent(adId, EventType.EXPOSURE)
+    }
+
+    /** 向统计仓库写入事件（异步，不阻塞UI） */
+    private fun recordStatEvent(adId: String, eventType: EventType) {
+        viewModelScope.launch {
+            val ad = _uiState.value.ads.find { it.id == adId } ?: return@launch
+            val event = StatisticEvent(
+                adId = adId,
+                tags = ad.tags,
+                eventType = eventType
+            )
+            when (eventType) {
+                EventType.EXPOSURE -> statisticsRepository.recordExposure(event)
+                EventType.CLICK -> statisticsRepository.recordClick(event)
+            }
         }
     }
 }

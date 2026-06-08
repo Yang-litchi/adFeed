@@ -7,6 +7,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.outlined.BookmarkBorder
@@ -32,6 +33,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.adfeed.viewmodel.DetailViewModel
 
 import com.example.adfeed.ui.ai.AiChatOverlay
+import com.example.adfeed.ui.components.swipeNavigable
 import com.example.adfeed.data.repository.MockData
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,7 +41,8 @@ fun DetailScreen(
     adId: String,
     viewModel: FeedViewModel,
     detailViewModel: DetailViewModel = viewModel(),
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onViewStatistics: (String) -> Unit = {}
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val ad = uiState.ads.find { it.id == adId }
@@ -54,6 +57,9 @@ fun DetailScreen(
     }
 
     Scaffold(
+        modifier = Modifier.swipeNavigable(
+            onSwipeLeft = { onViewStatistics(ad.id) }  // 右→左滑动 → 进入统计页
+        ),
         topBar = {
             TopAppBar(
                 title = {
@@ -68,6 +74,15 @@ fun DetailScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
+                        )
+                    }
+                },
+                actions = {
+                    IconButton(onClick = { onViewStatistics(ad.id) }) {
+                        Icon(
+                            imageVector = Icons.Default.BarChart,
+                            contentDescription = "查看统计数据",
+                            tint = Color(0xFF6650A4)
                         )
                     }
                 }

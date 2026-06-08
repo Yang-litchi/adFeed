@@ -213,6 +213,10 @@ fun FeedScreen(
                         }
 
                         items(items = filteredAds, key = { it.id }) { ad ->
+                            // 曝光统计：item 被组合即视为进入可视区域
+                            LaunchedEffect(ad.id) {
+                                viewModel.recordExposure(ad.id)
+                            }
                             AdCardDispatcher(
                                 ad = ad,
                                 onLikeClick = { viewModel.toggleLike(ad.id) },

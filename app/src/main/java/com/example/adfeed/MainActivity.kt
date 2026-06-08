@@ -21,6 +21,7 @@ import androidx.navigation.navArgument
 import com.example.adfeed.ui.detail.DetailScreen
 import com.example.adfeed.ui.feed.FeedScreen
 import com.example.adfeed.ui.splash.SplashScreen
+import com.example.adfeed.ui.statistics.StatisticsScreen
 import com.example.adfeed.ui.theme.AdFeedTheme
 import com.example.adfeed.viewmodel.FeedViewModel
 
@@ -84,6 +85,24 @@ fun AppNavigation() {
             DetailScreen(
                 adId = adId,
                 viewModel = feedViewModel,
+                onBack = { navController.popBackStack() },
+                onViewStatistics = { id -> navController.navigate("statistics/$id") }
+            )
+        }
+
+        composable(
+            route = "statistics/{adId}",
+            arguments = listOf(navArgument("adId") { type = NavType.StringType }),
+            enterTransition = {
+                slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300))
+            },
+            exitTransition = {
+                slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300))
+            }
+        ) { backStackEntry ->
+            val statAdId = backStackEntry.arguments?.getString("adId") ?: ""
+            StatisticsScreen(
+                adId = statAdId,
                 onBack = { navController.popBackStack() }
             )
         }
