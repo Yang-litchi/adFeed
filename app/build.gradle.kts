@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
-    id("kotlin-kapt") // 引入 kapt 用于处理 Room 注解
+    alias(libs.plugins.ksp) // 使用 KSP 替代 kapt
 }
 
 android {
@@ -71,5 +71,5 @@ dependencies {
     val roomVersion = "2.6.1"
     implementation("androidx.room:room-runtime:${roomVersion}")
     implementation("androidx.room:room-ktx:${roomVersion}")
-    kapt("androidx.room:room-compiler:${roomVersion}")
+    ksp("androidx.room:room-compiler:${roomVersion}")
 }
