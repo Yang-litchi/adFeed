@@ -96,7 +96,7 @@ fun FeedScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
 
             // ── TabRow 占满 ──
             TabRow(
