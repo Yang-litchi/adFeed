@@ -68,7 +68,7 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
 
     // Room 数据库依赖
-    val roomVersion = "2.6.1"
+    val roomVersion = "2.8.4"
     implementation("androidx.room:room-runtime:${roomVersion}")
     implementation("androidx.room:room-ktx:${roomVersion}")
     ksp("androidx.room:room-compiler:${roomVersion}")
