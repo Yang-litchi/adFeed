@@ -25,7 +25,7 @@ import java.io.IOException
  */
 object QwenApi {
 
-    private const val API_KEY = "your apikey"
+    private const val API_KEY = "sk-878d4a4a257e48329324b46e9de1fd0f"
     private const val API_URL =
         "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
 

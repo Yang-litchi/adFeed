@@ -25,12 +25,12 @@ import java.net.SocketTimeoutException
  * NetworkClient.mockInterceptor.simulateFailureRate = 0.5f
  * ```
  *
- * @param isMockEnabled Mock 总开关，默认开启（方便离线开发）
+ * @param isMockEnabled Mock 总开关，默认关闭（生产环境使用真实 API）
  * @param simulateLatencyMs 模拟的网络延迟（毫秒），默认 800ms
  * @param simulateFailureRate 模拟故障概率（0.0 ~ 1.0），默认 0（不模拟故障）
  */
 class MockInterceptor(
-    @Volatile var isMockEnabled: Boolean = true,
+    @Volatile var isMockEnabled: Boolean = false,
     var simulateLatencyMs: Long = 800L,
     var simulateFailureRate: Float = 0f
 ) : Interceptor {
