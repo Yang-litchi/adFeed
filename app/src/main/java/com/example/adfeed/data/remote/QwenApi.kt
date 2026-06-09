@@ -1,5 +1,6 @@
 package com.example.adfeed.data.remote
 
+import com.example.adfeed.BuildConfig
 import com.example.adfeed.core.network.NetworkClient
 import com.example.adfeed.data.model.AiInfo
 import com.example.adfeed.ui.ai.ChatMessage
@@ -25,7 +26,7 @@ import java.io.IOException
  */
 object QwenApi {
 
-    private const val API_KEY = "sk-878d4a4a257e48329324b46e9de1fd0f"
+    private val apiKey: String get() = BuildConfig.QWEN_API_KEY
     private const val API_URL =
         "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
 
@@ -47,7 +48,7 @@ object QwenApi {
                 val request = Request.Builder()
                     .url(API_URL)
                     .post(requestBody.toString().toRequestBody(JSON_MEDIA_TYPE))
-                    .addHeader("Authorization", "Bearer $API_KEY")
+                    .addHeader("Authorization", "Bearer $apiKey")
                     .build()
 
                 // 2. 通过 NetworkClient 的 OkHttpClient 执行（自动享受重试+Mock+日志）

@@ -20,6 +20,17 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 从 local.properties 读取 Qwen API Key，通过 BuildConfig 注入（不引入 java.util 依赖）
+        val qwenApiKey: String = run {
+            val propsFile = rootProject.file("local.properties")
+            if (propsFile.exists()) {
+                propsFile.readLines()
+                    .firstOrNull { it.startsWith("qwen.api.key=") }
+                    ?.substringAfter("qwen.api.key=") ?: ""
+            } else ""
+        }
+        buildConfigField("String", "QWEN_API_KEY", "\"$qwenApiKey\"")
     }
 
     buildTypes {
@@ -37,6 +48,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
