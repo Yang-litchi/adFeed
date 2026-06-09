@@ -25,8 +25,8 @@ class AdApplication : Application() {
 
         // 开发阶段：清除所有 Mock 遗留的 AI 缓存，确保所有广告走真实 Qwen API
         // 正式发布时可移除此调用，利用缓存减少 API 请求
-        CoroutineScope(Dispatchers.IO).launch {
-            database.aiCacheDao().deleteAllCache()
-        }
+//        CoroutineScope(Dispatchers.IO).launch {
+//            database.aiCacheDao().deleteAllCache()
+//        }
     }
 }
