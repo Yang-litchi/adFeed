@@ -1,0 +1,15 @@
+# ==============================================================
+# 本地开发配置文件模板
+# ==============================================================
+# 使用方法：
+#   1. 复制此文件为 local.properties：
+#      cp local.properties.example local.properties
+#   2. 填入你自己的真实值
+# ==============================================================
+#
+# Android SDK 路径（根据你的机器修改）
+sdk.dir=/Users/<YOUR_USERNAME>/Library/Android/sdk
+#
+# Qwen (DashScope) API Key
+# 获取地址: https://dashscope.console.aliyun.com/apiKey
+qwen.api.key=<YOUR_QWEN_API_KEY>
