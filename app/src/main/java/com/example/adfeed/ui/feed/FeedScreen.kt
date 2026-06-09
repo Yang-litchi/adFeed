@@ -31,6 +31,7 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.zIndex
+import androidx.compose.foundation.layout.statusBarsPadding
 import com.example.adfeed.data.model.AdItem
 import com.example.adfeed.data.model.AdType
 import com.example.adfeed.ui.ai.AiFloatingBall
@@ -115,7 +116,7 @@ fun FeedScreen(
 
     Box(modifier = Modifier.fillMaxSize()) {
 
-        Column(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize().statusBarsPadding()) {
 
             // ── TabRow 占满 ──
             TabRow(
