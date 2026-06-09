@@ -7,8 +7,12 @@
 #   2. 填入你自己的真实值
 # ==============================================================
 #
-# Android SDK 路径（根据你的机器修改）
-sdk.dir=/Users/<YOUR_USERNAME>/Library/Android/sdk
+
+# Android SDK 路径（按你的系统和用户名修改）
+# macOS:    sdk.dir=/Users/你的用户名/Library/Android/sdk
+# Windows:  sdk.dir=C\:\\Users\\你的用户名\\AppData\\Local\\Android\\Sdk
+ # Linux:    sdk.dir=/home/你的用户名/Android/Sdk
+sdk.dir=<YOUR_SDK_PATH>
 #
 # Qwen (DashScope) API Key
 # 获取地址: https://dashscope.console.aliyun.com/apiKey
