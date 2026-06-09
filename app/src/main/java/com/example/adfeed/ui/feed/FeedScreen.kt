@@ -34,6 +34,7 @@ import androidx.compose.ui.zIndex
 import com.example.adfeed.data.model.AdItem
 import com.example.adfeed.data.model.AdType
 import com.example.adfeed.ui.ai.AiFloatingBall
+import com.example.adfeed.ui.components.ExposureDetector
 import com.example.adfeed.viewmodel.FeedViewModel
 
 val CHANNELS = listOf("精选", "电商", "本地")
@@ -87,6 +88,24 @@ fun FeedScreen(
     val filteredAds = remember(uiState.ads, selectedTags) {
         if (selectedTags.isEmpty()) uiState.ads
         else uiState.ads.filter { ad -> ad.tags.containsAll(selectedTags.toList()) }
+    }
+
+    // 基于 LazyListState 计算每个可见 item 的可见面积比例
+    // item.offset 为 item 顶部相对于 viewport 顶部的像素偏移（可为负值）
+    val visibleFractionMap by remember {
+        derivedStateOf {
+            val viewportHeight = listState.layoutInfo.viewportSize.height
+            if (viewportHeight == 0) return@derivedStateOf emptyMap<String, Float>()
+            listState.layoutInfo.visibleItemsInfo.associate { info ->
+                val itemTop = info.offset
+                val itemBottom = info.offset + info.size
+                val visibleTop = maxOf(itemTop, 0)
+                val visibleBottom = minOf(itemBottom, viewportHeight)
+                val visibleHeight = maxOf(0, visibleBottom - visibleTop)
+                val fraction = if (info.size > 0) visibleHeight.toFloat() / info.size else 0f
+                (info.key as? String ?: "") to fraction
+            }
+        }
     }
 
     val pullRefreshState = rememberPullRefreshState(
@@ -213,10 +232,12 @@ fun FeedScreen(
                         }
 
                         items(items = filteredAds, key = { it.id }) { ad ->
-                            // 曝光统计：item 被组合即视为进入可视区域
-                            LaunchedEffect(ad.id) {
-                                viewModel.recordExposure(ad.id)
-                            }
+                            // 曝光统计：≥50%可见 + 连续1秒 + 会话去重
+                            ExposureDetector(
+                                adId = ad.id,
+                                visibleFraction = visibleFractionMap[ad.id] ?: 0f,
+                                onExposed = { viewModel.recordExposure(ad.id) }
+                            )
                             AdCardDispatcher(
                                 ad = ad,
                                 onLikeClick = { viewModel.toggleLike(ad.id) },
