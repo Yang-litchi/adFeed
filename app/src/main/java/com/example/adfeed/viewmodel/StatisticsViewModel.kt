@@ -5,8 +5,8 @@ import androidx.lifecycle.viewModelScope
 import com.example.adfeed.data.model.StatisticSummary
 import com.example.adfeed.data.model.TagStatistic
 import com.example.adfeed.data.model.TrendData
-import com.example.adfeed.data.repository.FakeStatisticsRepository
 import com.example.adfeed.data.repository.MockData
+import com.example.adfeed.data.repository.RoomStatisticsRepository
 import com.example.adfeed.data.repository.StatisticsRepository
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,10 +30,10 @@ data class StatisticsUiState(
  *
  * UI层通过此ViewModel获取统计数据，不得直接访问Repository实现类。
  *
- * @param repository 统计数据仓库（默认使用内存模拟实现，后续可注入Room实现）
+ * @param repository 统计数据仓库（默认使用 Room 持久化实现）
  */
 class StatisticsViewModel(
-    private val repository: StatisticsRepository = FakeStatisticsRepository
+    private val repository: StatisticsRepository = RoomStatisticsRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(StatisticsUiState())

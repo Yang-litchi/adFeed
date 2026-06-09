@@ -1,5 +1,6 @@
 package com.example.adfeed.data.remote
 
+import com.example.adfeed.BuildConfig
 import com.example.adfeed.data.model.AiInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -11,7 +12,7 @@ import java.net.URL
 import com.example.adfeed.ui.ai.ChatMessage
 object QwenApi {
 
-    private const val API_KEY = "your apikey"
+    private val API_KEY: String get() = BuildConfig.QWEN_API_KEY
     private const val API_URL =
         "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
 

@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.ksp)
 }
 
 android {
@@ -19,6 +20,17 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        // 从 local.properties 读取 Qwen API Key，通过 BuildConfig 注入
+        val qwenApiKey: String = run {
+            val propsFile = rootProject.file("local.properties")
+            if (propsFile.exists()) {
+                propsFile.readLines()
+                    .firstOrNull { it.startsWith("qwen.api.key=") }
+                    ?.substringAfter("qwen.api.key=") ?: ""
+            } else ""
+        }
+        buildConfigField("String", "QWEN_API_KEY", "\"$qwenApiKey\"")
     }
 
     buildTypes {
@@ -36,6 +48,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -65,4 +78,10 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+
+    // Room 数据库依赖
+    val roomVersion = "2.8.4"
+    implementation("androidx.room:room-runtime:${roomVersion}")
+    implementation("androidx.room:room-ktx:${roomVersion}")
+    ksp("androidx.room:room-compiler:${roomVersion}")
 }
