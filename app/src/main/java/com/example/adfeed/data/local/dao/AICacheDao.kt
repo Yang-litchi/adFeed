@@ -29,4 +29,10 @@ interface AICacheDao {
      */
     @Query("DELETE FROM ai_cache WHERE adId = :adId")
     suspend fun deleteCache(adId: String)
+
+    /**
+     * 清空所有 AI 缓存数据（用于清除 Mock 遗留数据或重置缓存）
+     */
+    @Query("DELETE FROM ai_cache")
+    suspend fun deleteAllCache()
 }
