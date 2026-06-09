@@ -20,7 +20,7 @@ class AdApplication : Application() {
             AppDatabase::class.java,
             "adfeed.db"
         )
-        .fallbackToDestructiveMigration()
+        .fallbackToDestructiveMigration(true)
         .build()
 
         // 开发阶段：清除所有 Mock 遗留的 AI 缓存，确保所有广告走真实 Qwen API
