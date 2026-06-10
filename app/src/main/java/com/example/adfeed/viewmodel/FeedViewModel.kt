@@ -26,6 +26,29 @@ data class FeedUiState(
     val error: String? = null
 )
 
+fun mergeInteractionState(ad: AdItem, entity: InteractionEntity?): AdItem {
+    return if (entity != null) {
+        ad.copy(
+            isLiked = entity.isLiked,
+            likeCount = ad.likeCount + entity.likeCountOffset,
+            isCollected = entity.isCollected,
+            collectCount = ad.collectCount + entity.collectCountOffset
+        )
+    } else {
+        ad
+    }
+}
+
+fun nextCollectInteraction(entity: InteractionEntity?, adId: String): InteractionEntity {
+    val current = entity ?: InteractionEntity(adId, false, false, 0, 0, 0)
+    val newCollected = !current.isCollected
+    val newOffset = if (newCollected) 1 else 0
+    return current.copy(
+        isCollected = newCollected,
+        collectCountOffset = newOffset
+    )
+}
+
 class FeedViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow(FeedUiState())
@@ -58,14 +81,11 @@ class FeedViewModel : ViewModel() {
                 val interactionMap = interactions.associateBy { it.adId }
                 _uiState.update { state ->
                     state.copy(ads = state.ads.map { ad ->
-                        val entity = interactionMap[ad.id]
-                        if (entity != null) {
-                            ad.copy(
-                                isLiked = entity.isLiked,
-                                likeCount = ad.likeCount + entity.likeCountOffset,
-                                isCollected = entity.isCollected
-                            )
-                        } else ad
+                        val baseAd = MockData.allAds.find { it.id == ad.id } ?: ad
+                        mergeInteractionState(baseAd, interactionMap[ad.id]).copy(
+                            exposureCount = ad.exposureCount,
+                            clickCount = ad.clickCount
+                        )
                     })
                 }
             }
@@ -87,13 +107,7 @@ class FeedViewModel : ViewModel() {
                 shuffledPool.subList(start, end).map { ad ->
                     // 从 Room 加载交互状态
                     val entity = AdApplication.database.interactionDao().getInteraction(ad.id)
-                    val merged = if (entity != null) {
-                        ad.copy(
-                            isLiked = entity.isLiked,
-                            likeCount = ad.likeCount + entity.likeCountOffset,
-                            isCollected = entity.isCollected
-                        )
-                    } else ad
+                    val merged = mergeInteractionState(ad, entity)
 
                     // 从 Room 加载持久化的统计数据
                     val exposureCount = AdApplication.database.statisticEventDao()
@@ -153,10 +167,7 @@ class FeedViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             val dao = AdApplication.database.interactionDao()
             val entity = dao.getInteraction(adId)
-                ?: InteractionEntity(adId, false, false, 0, 0, 0)
-            val newCollected = !entity.isCollected
-
-            dao.insertOrUpdate(entity.copy(isCollected = newCollected))
+            dao.insertOrUpdate(nextCollectInteraction(entity, adId))
         }
     }
 
