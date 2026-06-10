@@ -315,6 +315,7 @@ fun FeedScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .align(Alignment.TopCenter)
+                .statusBarsPadding()
                 .padding(top = 97.dp)
                 .zIndex(10f)
         ) {

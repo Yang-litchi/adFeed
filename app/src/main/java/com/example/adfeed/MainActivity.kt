@@ -74,10 +74,20 @@ fun AppNavigation() {
         composable(
             route = "detail/{adId}",
             arguments = listOf(navArgument("adId") { type = NavType.StringType }),
+            // 进入：从右边滑入
             enterTransition = {
                 slideInHorizontally(initialOffsetX = { it }, animationSpec = tween(300))
             },
+            // 退出：往左边滑出
             exitTransition = {
+                slideOutHorizontally(targetOffsetX = { -it }, animationSpec = tween(300))
+            },
+            // 返回进入：从左边滑回
+            popEnterTransition = {
+                slideInHorizontally(initialOffsetX = { -it }, animationSpec = tween(300))
+            },
+            // 返回退出：往右边滑出
+            popExitTransition = {
                 slideOutHorizontally(targetOffsetX = { it }, animationSpec = tween(300))
             }
         ) { backStackEntry ->
