@@ -27,6 +27,30 @@ data class FeedUiState(
     val error: String? = null
 )
 
+fun mergeInteractionState(ad: AdItem, entity: InteractionEntity?): AdItem {
+    return if (entity != null) {
+        ad.copy(
+            isLiked = entity.isLiked,
+            likeCount = ad.likeCount + entity.likeCountOffset,
+            isCollected = entity.isCollected,
+            collectCount = ad.collectCount + entity.collectCountOffset
+        )
+    } else {
+        ad
+    }
+}
+
+fun nextCollectInteraction(entity: InteractionEntity?, adId: String): InteractionEntity {
+    val current = entity ?: InteractionEntity(adId, false, false, 0, 0, 0)
+    val newCollected = !current.isCollected
+    val newOffset =
+        current.collectCountOffset + if (newCollected) 1 else -1
+    return current.copy(
+        isCollected = newCollected,
+        collectCountOffset = newOffset
+    )
+}
+
 class FeedViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow(FeedUiState())
@@ -53,6 +77,9 @@ class FeedViewModel : ViewModel() {
         return MockData.getByChannel(channel).shuffled()
     }
 
+    /**
+     * 订阅 Room 数据库变更，自动同步交互状态（点赞/收藏）到 UI
+     */
     private fun observeDatabaseChanges() {
         viewModelScope.launch {
             AdApplication.database.interactionDao().getAllInteractionsFlow().collect { interactions ->
@@ -61,14 +88,11 @@ class FeedViewModel : ViewModel() {
                 // 更新列表
                 _uiState.update { state ->
                     state.copy(ads = state.ads.map { ad ->
-                        val entity = interactionMap[ad.id]
-                        if (entity != null) {
-                            ad.copy(
-                                isLiked = entity.isLiked,
-                                likeCount = ad.likeCount + entity.likeCountOffset,
-                                isCollected = entity.isCollected
-                            )
-                        } else ad
+                        val baseAd = MockData.allAds.find { it.id == ad.id } ?: ad
+                        mergeInteractionState(baseAd, interactionMap[ad.id]).copy(
+                            exposureCount = ad.exposureCount,
+                            clickCount = ad.clickCount
+                        )
                     })
                 }
 
@@ -78,10 +102,19 @@ class FeedViewModel : ViewModel() {
                     if (entity != null) {
                         val baseCount = MockData.allAds
                             .find { it.id == current.id }?.likeCount ?: current.likeCount
+                        val baseAd = MockData.allAds.find { it.id == current.id }
+
                         _detailAd.value = current.copy(
                             isLiked = entity.isLiked,
-                            likeCount = baseCount + entity.likeCountOffset,
-                            isCollected = entity.isCollected
+                            likeCount =
+                                (baseAd?.likeCount ?: current.likeCount)
+                                        + entity.likeCountOffset,
+
+                            isCollected = entity.isCollected,
+
+                            collectCount =
+                                (baseAd?.collectCount ?: current.collectCount)
+                                        + entity.collectCountOffset
                         )
                     }
                 }
@@ -102,20 +135,19 @@ class FeedViewModel : ViewModel() {
 
             val newAds = withContext(Dispatchers.IO) {
                 shuffledPool.subList(start, end).map { ad ->
+                    // 从 Room 加载交互状态
                     val entity = AdApplication.database.interactionDao().getInteraction(ad.id)
-                    val merged = if (entity != null) {
-                        ad.copy(
-                            isLiked = entity.isLiked,
-                            likeCount = ad.likeCount + entity.likeCountOffset,
-                            isCollected = entity.isCollected
-                        )
-                    } else ad
+                    val merged = mergeInteractionState(ad, entity)
 
+                    // 从 Room 加载持久化的统计数据
                     val exposureCount = AdApplication.database.statisticEventDao()
                         .getExposureCount(ad.id)
                     val clickCount = AdApplication.database.statisticEventDao()
                         .getClickCount(ad.id)
-                    merged.copy(exposureCount = exposureCount, clickCount = clickCount)
+                    merged.copy(
+                        exposureCount = exposureCount,
+                        clickCount = clickCount
+                    )
                 }
             }
 
@@ -162,9 +194,19 @@ class FeedViewModel : ViewModel() {
             val merged = if (entity != null) {
                 base.copy(
                     isLiked = entity.isLiked,
-                    likeCount = (MockData.allAds.find { it.id == adId }?.likeCount
-                        ?: base.likeCount) + entity.likeCountOffset,
+
+                    likeCount =
+                        (MockData.allAds.find { it.id == adId }?.likeCount
+                            ?: base.likeCount)
+                                + entity.likeCountOffset,
+
                     isCollected = entity.isCollected,
+
+                    collectCount =
+                        (MockData.allAds.find { it.id == adId }?.collectCount
+                            ?: base.collectCount)
+                                + entity.collectCountOffset,
+
                     exposureCount = exposureCount,
                     clickCount = clickCount
                 )
@@ -187,6 +229,7 @@ class FeedViewModel : ViewModel() {
                 ?: InteractionEntity(adId, false, false, 0, 0, 0)
             val newLiked = !entity.isLiked
             val newOffset = entity.likeCountOffset + (if (newLiked) 1 else -1)
+
             dao.insertOrUpdate(entity.copy(isLiked = newLiked, likeCountOffset = newOffset))
         }
     }
@@ -195,9 +238,7 @@ class FeedViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO) {
             val dao = AdApplication.database.interactionDao()
             val entity = dao.getInteraction(adId)
-                ?: InteractionEntity(adId, false, false, 0, 0, 0)
-            val newCollected = !entity.isCollected
-            dao.insertOrUpdate(entity.copy(isCollected = newCollected))
+            dao.insertOrUpdate(nextCollectInteraction(entity, adId))
         }
     }
 

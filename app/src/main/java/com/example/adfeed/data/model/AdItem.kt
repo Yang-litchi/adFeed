@@ -9,6 +9,7 @@ data class AdItem(
     val videoUrl: String? = null,
     val channel: String,
     val likeCount: Int = 0,
+    val collectCount: Int = 0,
     val isLiked: Boolean = false,
     val isCollected: Boolean = false,
     val exposureCount: Int = 0,

@@ -12,7 +12,7 @@ import java.net.URL
 import com.example.adfeed.ui.ai.ChatMessage
 object QwenApi {
 
-    private val API_KEY: String get() = "sk-878d4a4a257e48329324b46e9de1fd0f"//BuildConfig.QWEN_API_KEY
+    private val API_KEY: String get() = BuildConfig.QWEN_API_KEY
     private const val API_URL =
         "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions"
 

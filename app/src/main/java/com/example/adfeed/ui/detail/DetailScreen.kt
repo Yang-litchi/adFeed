@@ -1,5 +1,6 @@
 package com.example.adfeed.ui.detail
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -164,14 +165,17 @@ fun DetailScreen(
                                     }
                                 }
                                 Spacer(modifier = Modifier.height(6.dp))
-                                when {
-                                    detailUiState.error != null -> {
-                                        Text(
-                                            text = detailUiState.error!!,
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = Color.Gray
-                                        )
+                                detailUiState.error?.let { error ->
+                                    Text(
+                                        text = error,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = Color.Gray
+                                    )
+                                    if (detailUiState.displayedText.isNotEmpty()) {
+                                        Spacer(modifier = Modifier.height(4.dp))
                                     }
+                                }
+                                when {
                                     detailUiState.displayedText.isNotEmpty() -> {
                                         Text(
                                             text = detailUiState.displayedText,
@@ -210,18 +214,27 @@ fun DetailScreen(
                             count = adItem.likeCount,
                             onClick = { viewModel.toggleLike(adItem.id) }
                         )
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            IconButton(onClick = { viewModel.toggleCollect(adItem.id) }) {
-                                Icon(
-                                    imageVector = if (adItem.isCollected) Icons.Filled.Bookmark
-                                    else Icons.Outlined.BookmarkBorder,
-                                    contentDescription = "收藏",
-                                    tint = if (adItem.isCollected) Color(0xFFFFAA00) else Color.Gray
-                                )
-                            }
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .clickable { viewModel.toggleCollect(adItem.id) }
+                                .padding(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = if (adItem.isCollected) Icons.Filled.Bookmark
+                                else Icons.Outlined.BookmarkBorder,
+                                contentDescription = "收藏",
+                                tint = if (adItem.isCollected) Color(0xFFFFAA00) else Color.Gray,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                "收藏",
-                                style = MaterialTheme.typography.labelSmall,
+                                text = if (adItem.collectCount >= 1000) {
+                                    "${"%.1f".format(adItem.collectCount / 1000f)}k"
+                                } else {
+                                    adItem.collectCount.toString()
+                                },
+                                style = MaterialTheme.typography.labelMedium,
                                 color = Color.Gray
                             )
                         }
