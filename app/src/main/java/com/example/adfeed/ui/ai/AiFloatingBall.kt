@@ -34,6 +34,7 @@ import com.example.adfeed.data.model.AdItem
 import com.example.adfeed.data.remote.QwenApi
 import com.example.adfeed.data.repository.MockData
 import kotlinx.coroutines.launch
+import com.example.adfeed.viewmodel.FeedViewModel
 
 data class SearchRecord(
     val query: String,
@@ -43,7 +44,8 @@ data class SearchRecord(
 
 @Composable
 fun AiFloatingBall(
-    onAdClick: (AdItem) -> Unit
+    onAdClick: (AdItem) -> Unit,
+    feedViewModel: FeedViewModel
 ) {
     var expanded by remember { mutableStateOf(false) }
     var inputText by remember { mutableStateOf("") }
@@ -104,6 +106,10 @@ fun AiFloatingBall(
                         val ids = json.getJSONArray("ids")
                         val idList = (0 until ids.length()).map { ids.getString(it) }
                         val resultAds = MockData.allAds.filter { it.id in idList }
+                        // AI推荐即曝光
+                        resultAds.forEach { ad ->
+                            feedViewModel.recordAiExposure(ad.id)
+                        }
                         val reply = json.optString("reply", "为你找到以下广告")
                         searchHistory.add(SearchRecord(query, reply, resultAds))
                     } catch (e: Exception) {
@@ -196,7 +202,10 @@ fun AiFloatingBall(
                                             modifier = Modifier
                                                 .fillMaxWidth()
                                                 .padding(vertical = 3.dp)
-                                                .clickable { onAdClick(ad) },
+                                                .clickable {
+                                                    feedViewModel.recordClick(ad.id)
+                                                    onAdClick(ad)
+                                                },
                                             shape = RoundedCornerShape(8.dp),
                                             color = Color(0xFFF5F5F5)
                                         ) {

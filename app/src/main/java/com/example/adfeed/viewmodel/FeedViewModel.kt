@@ -3,6 +3,7 @@ package com.example.adfeed.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.adfeed.AdApplication
+import com.example.adfeed.data.exposure.ExposureTracker
 import com.example.adfeed.data.local.entity.InteractionEntity
 import com.example.adfeed.data.model.AdItem
 import com.example.adfeed.data.model.EventType
@@ -31,7 +32,10 @@ class FeedViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(FeedUiState())
     val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
 
-    // 统计数据仓库（Room 持久化实现）
+    // 详情页独立数据源
+    private val _detailAd = MutableStateFlow<AdItem?>(null)
+    val detailAd: StateFlow<AdItem?> = _detailAd.asStateFlow()
+
     private val statisticsRepository: StatisticsRepository = RoomStatisticsRepository
 
     private var currentChannel = "精选"
@@ -49,13 +53,12 @@ class FeedViewModel : ViewModel() {
         return MockData.getByChannel(channel).shuffled()
     }
 
-    /**
-     * 订阅 Room 数据库变更，自动同步交互状态（点赞/收藏）到 UI
-     */
     private fun observeDatabaseChanges() {
         viewModelScope.launch {
             AdApplication.database.interactionDao().getAllInteractionsFlow().collect { interactions ->
                 val interactionMap = interactions.associateBy { it.adId }
+
+                // 更新列表
                 _uiState.update { state ->
                     state.copy(ads = state.ads.map { ad ->
                         val entity = interactionMap[ad.id]
@@ -67,6 +70,20 @@ class FeedViewModel : ViewModel() {
                             )
                         } else ad
                     })
+                }
+
+                // 同步更新详情页
+                _detailAd.value?.let { current ->
+                    val entity = interactionMap[current.id]
+                    if (entity != null) {
+                        val baseCount = MockData.allAds
+                            .find { it.id == current.id }?.likeCount ?: current.likeCount
+                        _detailAd.value = current.copy(
+                            isLiked = entity.isLiked,
+                            likeCount = baseCount + entity.likeCountOffset,
+                            isCollected = entity.isCollected
+                        )
+                    }
                 }
             }
         }
@@ -85,7 +102,6 @@ class FeedViewModel : ViewModel() {
 
             val newAds = withContext(Dispatchers.IO) {
                 shuffledPool.subList(start, end).map { ad ->
-                    // 从 Room 加载交互状态
                     val entity = AdApplication.database.interactionDao().getInteraction(ad.id)
                     val merged = if (entity != null) {
                         ad.copy(
@@ -95,15 +111,11 @@ class FeedViewModel : ViewModel() {
                         )
                     } else ad
 
-                    // 从 Room 加载持久化的统计数据
                     val exposureCount = AdApplication.database.statisticEventDao()
                         .getExposureCount(ad.id)
                     val clickCount = AdApplication.database.statisticEventDao()
                         .getClickCount(ad.id)
-                    merged.copy(
-                        exposureCount = exposureCount,
-                        clickCount = clickCount
-                    )
+                    merged.copy(exposureCount = exposureCount, clickCount = clickCount)
                 }
             }
 
@@ -137,6 +149,37 @@ class FeedViewModel : ViewModel() {
         loadAds()
     }
 
+    fun loadDetailAd(adId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val base = _uiState.value.ads.find { it.id == adId }
+                ?: MockData.allAds.find { it.id == adId }
+                ?: return@launch
+
+            val entity = AdApplication.database.interactionDao().getInteraction(adId)
+            val exposureCount = AdApplication.database.statisticEventDao().getExposureCount(adId)
+            val clickCount = AdApplication.database.statisticEventDao().getClickCount(adId)
+
+            val merged = if (entity != null) {
+                base.copy(
+                    isLiked = entity.isLiked,
+                    likeCount = (MockData.allAds.find { it.id == adId }?.likeCount
+                        ?: base.likeCount) + entity.likeCountOffset,
+                    isCollected = entity.isCollected,
+                    exposureCount = exposureCount,
+                    clickCount = clickCount
+                )
+            } else {
+                base.copy(exposureCount = exposureCount, clickCount = clickCount)
+            }
+
+            _detailAd.value = merged
+        }
+    }
+
+    fun clearDetailAd() {
+        _detailAd.value = null
+    }
+
     fun toggleLike(adId: String) {
         viewModelScope.launch(Dispatchers.IO) {
             val dao = AdApplication.database.interactionDao()
@@ -144,7 +187,6 @@ class FeedViewModel : ViewModel() {
                 ?: InteractionEntity(adId, false, false, 0, 0, 0)
             val newLiked = !entity.isLiked
             val newOffset = entity.likeCountOffset + (if (newLiked) 1 else -1)
-
             dao.insertOrUpdate(entity.copy(isLiked = newLiked, likeCountOffset = newOffset))
         }
     }
@@ -155,7 +197,6 @@ class FeedViewModel : ViewModel() {
             val entity = dao.getInteraction(adId)
                 ?: InteractionEntity(adId, false, false, 0, 0, 0)
             val newCollected = !entity.isCollected
-
             dao.insertOrUpdate(entity.copy(isCollected = newCollected))
         }
     }
@@ -166,24 +207,61 @@ class FeedViewModel : ViewModel() {
                 if (ad.id == adId) ad.copy(clickCount = ad.clickCount + 1) else ad
             })
         }
-        // 同时持久化写入 Room 统计仓库
+        // detailAd同步更新点击数
+        _detailAd.value?.let { current ->
+            if (current.id == adId) {
+                _detailAd.value = current.copy(clickCount = current.clickCount + 1)
+            }
+        }
         recordStatEvent(adId, EventType.CLICK)
     }
 
-    fun recordExposure(adId: String) {
+    private fun increaseExposure(adId: String) {
+
         _uiState.update { state ->
-            state.copy(ads = state.ads.map { ad ->
-                if (ad.id == adId) ad.copy(exposureCount = ad.exposureCount + 1) else ad
-            })
+            state.copy(
+                ads = state.ads.map { ad ->
+                    if (ad.id == adId)
+                        ad.copy(
+                            exposureCount = ad.exposureCount + 1
+                        )
+                    else ad
+                }
+            )
         }
-        // 同时持久化写入 Room 统计仓库
+
+        _detailAd.value?.let { current ->
+            if (current.id == adId) {
+                _detailAd.value = current.copy(
+                    exposureCount = current.exposureCount + 1
+                )
+            }
+        }
+
         recordStatEvent(adId, EventType.EXPOSURE)
     }
+    fun recordExposure(adId: String) {
 
-    /** 向 Room 统计仓库写入事件（异步，不阻塞UI） */
+        // Feed曝光：本次App启动期间只统计一次
+        if (ExposureTracker.isExposed(adId)) {
+            return
+        }
+        // 记录曝光
+        ExposureTracker.markExposed(adId)
+
+        increaseExposure(adId)
+    }
+
+    fun recordAiExposure(adId: String) {
+        increaseExposure(adId)
+    }
     private fun recordStatEvent(adId: String, eventType: EventType) {
         viewModelScope.launch {
-            val ad = _uiState.value.ads.find { it.id == adId } ?: return@launch
+            // 优先从uiState找，找不到从detailAd找，再找不到从MockData找
+            val ad = _uiState.value.ads.find { it.id == adId }
+                ?: _detailAd.value?.takeIf { it.id == adId }
+                ?: MockData.allAds.find { it.id == adId }
+                ?: return@launch
             val event = StatisticEvent(
                 adId = adId,
                 tags = ad.tags,

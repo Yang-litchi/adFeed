@@ -47,7 +47,8 @@ fun ExposureDetector(
 
             // 计时结束后再次检查去重（以防并发场景下的竞态）
             if (!tracker.isExposed(adId)) {
-                tracker.markExposed(adId)
+                //tracker.markExposed(adId)
+                //让 ExposureDetector 只负责检测，防重放在recordExposure内
                 onExposed()
             }
         }
