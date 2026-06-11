@@ -53,7 +53,6 @@ fun FeedScreen(
     var filterExpanded by remember { mutableStateOf(false) }
     var showCustomTagInput by remember { mutableStateOf(false) }
     var customTagInput by remember { mutableStateOf("") }
-    val listState = rememberLazyListState()
 
     // 3页对应3个频道
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 3 })
@@ -89,24 +88,6 @@ fun FeedScreen(
     val filteredAds = remember(uiState.ads, selectedTags) {
         if (selectedTags.isEmpty()) uiState.ads
         else uiState.ads.filter { ad -> ad.tags.containsAll(selectedTags.toList()) }
-    }
-
-    // 基于 LazyListState 计算每个可见 item 的可见面积比例
-    // item.offset 为 item 顶部相对于 viewport 顶部的像素偏移（可为负值）
-    val visibleFractionMap by remember {
-        derivedStateOf {
-            val viewportHeight = listState.layoutInfo.viewportSize.height
-            if (viewportHeight == 0) return@derivedStateOf emptyMap<String, Float>()
-            listState.layoutInfo.visibleItemsInfo.associate { info ->
-                val itemTop = info.offset
-                val itemBottom = info.offset + info.size
-                val visibleTop = maxOf(itemTop, 0)
-                val visibleBottom = minOf(itemBottom, viewportHeight)
-                val visibleHeight = maxOf(0, visibleBottom - visibleTop)
-                val fraction = if (info.size > 0) visibleHeight.toFloat() / info.size else 0f
-                (info.key as? String ?: "") to fraction
-            }
-        }
     }
 
     val pullRefreshState = rememberPullRefreshState(
@@ -204,6 +185,26 @@ fun FeedScreen(
                 modifier = Modifier.fillMaxSize(),
                 userScrollEnabled = true
             ) {
+                // 每个页面独立的 LazyListState，避免跨页面共享 layoutInfo 导致曝光统计失效
+                val listState = rememberLazyListState()
+
+                // 基于当前页面的 LazyListState 计算每个可见 item 的可见面积比例
+                val visibleFractionMap by remember {
+                    derivedStateOf {
+                        val viewportHeight = listState.layoutInfo.viewportSize.height
+                        if (viewportHeight == 0) return@derivedStateOf emptyMap<String, Float>()
+                        listState.layoutInfo.visibleItemsInfo.associate { info ->
+                            val itemTop = info.offset
+                            val itemBottom = info.offset + info.size
+                            val visibleTop = maxOf(itemTop, 0)
+                            val visibleBottom = minOf(itemBottom, viewportHeight)
+                            val visibleHeight = maxOf(0, visibleBottom - visibleTop)
+                            val fraction = if (info.size > 0) visibleHeight.toFloat() / info.size else 0f
+                            (info.key as? String ?: "") to fraction
+                        }
+                    }
+                }
+
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
