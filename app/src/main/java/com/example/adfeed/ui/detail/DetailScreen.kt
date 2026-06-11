@@ -26,6 +26,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.example.adfeed.data.model.AdType
+import com.example.adfeed.ui.components.ExposureDetector
 import com.example.adfeed.ui.components.LikeButton
 import com.example.adfeed.ui.components.TagChip
 import com.example.adfeed.viewmodel.FeedViewModel
@@ -103,6 +104,14 @@ fun DetailScreen(
         LaunchedEffect(adItem.id) {
             if (adItem.aiInfo != null) detailViewModel.loadIntro(adItem)
         }
+
+        // 曝光统计：详情页内容默认100%可见，1秒后计入曝光（单会话去重）
+        // 与 Feed 列表使用相同的 ExposureDetector + ExposureTracker 规则
+        ExposureDetector(
+            adId = adItem.id,
+            visibleFraction = 1f,
+            onExposed = { viewModel.recordExposure(adItem.id) }
+        )
 
         LazyColumn(
             modifier = Modifier

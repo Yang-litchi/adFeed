@@ -420,7 +420,10 @@ fun FeedScreen(
         }
 
         // ── 悬浮AI球 ──
-        AiFloatingBall(onAdClick = onAdClick)
+        AiFloatingBall(onAdClick = { ad ->
+            viewModel.recordClick(ad.id)
+            onAdClick(ad)
+        })
     }
 }
 
