@@ -35,7 +35,6 @@ import com.example.adfeed.viewmodel.DetailViewModel
 
 import com.example.adfeed.ui.ai.AiChatOverlay
 import com.example.adfeed.ui.components.swipeNavigable
-import com.example.adfeed.data.repository.MockData
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
@@ -45,27 +44,35 @@ fun DetailScreen(
     onBack: () -> Unit,
     onViewStatistics: (String) -> Unit = {}
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    val ad = uiState.ads.find { it.id == adId }
-        ?: MockData.allAds.find { it.id == adId }
+    LaunchedEffect(adId) {
+        viewModel.loadDetailAd(adId)
+    }
+
+    DisposableEffect(adId) {
+        onDispose { viewModel.clearDetailAd() }
+    }
+
+    val ad by viewModel.detailAd.collectAsState()
     var showAiChat by remember { mutableStateOf(false) }
 
     if (ad == null) {
         Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("内容不存在")
+            CircularProgressIndicator()
         }
         return
     }
 
+    val adItem = ad!!
+
     Scaffold(
         modifier = Modifier.swipeNavigable(
-            onSwipeLeft = { onViewStatistics(ad.id) }  // 右→左滑动 → 进入统计页
+            onSwipeLeft = { onViewStatistics(adItem.id) }  // 右→左滑动 → 进入统计页
         ),
         topBar = {
             TopAppBar(
                 title = {
                     Text(
-                        text = ad.title,
+                        text = adItem.title,
                         maxLines = 1,
                         overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
                     )
@@ -79,7 +86,7 @@ fun DetailScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { onViewStatistics(ad.id) }) {
+                    IconButton(onClick = { onViewStatistics(adItem.id) }) {
                         Icon(
                             imageVector = Icons.Default.BarChart,
                             contentDescription = "查看统计数据",
@@ -93,8 +100,8 @@ fun DetailScreen(
 
         val detailUiState by detailViewModel.uiState.collectAsState()
 
-        LaunchedEffect(ad.id) {
-            if (ad.aiInfo != null) detailViewModel.loadIntro(ad)
+        LaunchedEffect(adItem.id) {
+            if (adItem.aiInfo != null) detailViewModel.loadIntro(adItem)
         }
 
         LazyColumn(
@@ -104,11 +111,11 @@ fun DetailScreen(
         ) {
             item {
                 // 顶部媒体
-                if (ad.type == AdType.VIDEO && !ad.videoUrl.isNullOrEmpty()) {
-                    DetailVideoPlayer(videoUrl = ad.videoUrl)
+                if (adItem.type == AdType.VIDEO && !adItem.videoUrl.isNullOrEmpty()) {
+                    DetailVideoPlayer(videoUrl = adItem.videoUrl)
                 } else {
                     AsyncImage(
-                        model = ad.imageUrl,
+                        model = adItem.imageUrl,
                         contentDescription = null,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier
@@ -120,21 +127,21 @@ fun DetailScreen(
                 Column(modifier = Modifier.padding(16.dp)) {
                     // 标题
                     Text(
-                        text = ad.title,
+                        text = adItem.title,
                         style = MaterialTheme.typography.headlineSmall
                     )
                     Spacer(modifier = Modifier.height(8.dp))
 
                     // 标签
-                    if (ad.tags.isNotEmpty()) {
+                    if (adItem.tags.isNotEmpty()) {
                         LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            items(ad.tags) { tag -> TagChip(tag) }
+                            items(adItem.tags) { tag -> TagChip(tag) }
                         }
                         Spacer(modifier = Modifier.height(12.dp))
                     }
 
                     // AI介绍
-                    if (ad.aiInfo != null) {
+                    if (adItem.aiInfo != null) {
                         Surface(
                             color = Color(0xFFF0EEFF),
                             shape = RoundedCornerShape(10.dp),
@@ -190,7 +197,7 @@ fun DetailScreen(
 
                     // 正文
                     Text(
-                        text = ad.description,
+                        text = adItem.description,
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Spacer(modifier = Modifier.height(24.dp))
@@ -202,29 +209,29 @@ fun DetailScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         LikeButton(
-                            isLiked = ad.isLiked,
-                            count = ad.likeCount,
-                            onClick = { viewModel.toggleLike(ad.id) }
+                            isLiked = adItem.isLiked,
+                            count = adItem.likeCount,
+                            onClick = { viewModel.toggleLike(adItem.id) }
                         )
                         Row(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier
-                                .clickable { viewModel.toggleCollect(ad.id) }
+                                .clickable { viewModel.toggleCollect(adItem.id) }
                                 .padding(4.dp)
                         ) {
                             Icon(
-                                imageVector = if (ad.isCollected) Icons.Filled.Bookmark
+                                imageVector = if (adItem.isCollected) Icons.Filled.Bookmark
                                 else Icons.Outlined.BookmarkBorder,
                                 contentDescription = "收藏",
-                                tint = if (ad.isCollected) Color(0xFFFFAA00) else Color.Gray,
+                                tint = if (adItem.isCollected) Color(0xFFFFAA00) else Color.Gray,
                                 modifier = Modifier.size(22.dp)
                             )
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = if (ad.collectCount >= 1000) {
-                                    "${"%.1f".format(ad.collectCount / 1000f)}k"
+                                text = if (adItem.collectCount >= 1000) {
+                                    "${"%.1f".format(adItem.collectCount / 1000f)}k"
                                 } else {
-                                    ad.collectCount.toString()
+                                    adItem.collectCount.toString()
                                 },
                                 style = MaterialTheme.typography.labelMedium,
                                 color = Color.Gray
@@ -266,7 +273,7 @@ fun DetailScreen(
         }
         if (showAiChat) {
             AiChatOverlay(
-                ad = ad,
+                ad = adItem,
                 onDismiss = { showAiChat = false }
             )
         }

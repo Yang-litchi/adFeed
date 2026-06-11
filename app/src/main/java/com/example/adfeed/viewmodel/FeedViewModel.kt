@@ -39,20 +39,64 @@ fun mergeInteractionState(ad: AdItem, entity: InteractionEntity?): AdItem {
     }
 }
 
+fun nextLikeDisplayState(ad: AdItem): AdItem {
+    val newLiked = !ad.isLiked
+    return ad.copy(
+        isLiked = newLiked,
+        likeCount = nextDisplayCount(ad.likeCount, newLiked)
+    )
+}
+
+fun nextCollectDisplayState(ad: AdItem): AdItem {
+    val newCollected = !ad.isCollected
+    return ad.copy(
+        isCollected = newCollected,
+        collectCount = nextDisplayCount(ad.collectCount, newCollected)
+    )
+}
+
+fun nextLikeInteraction(entity: InteractionEntity?, adId: String): InteractionEntity {
+    val current = entity ?: InteractionEntity(adId, false, false, 0, 0, 0)
+    val newLiked = !current.isLiked
+    return current.copy(
+        isLiked = newLiked,
+        likeCountOffset = binaryOffset(newLiked)
+    )
+}
+
 fun nextCollectInteraction(entity: InteractionEntity?, adId: String): InteractionEntity {
     val current = entity ?: InteractionEntity(adId, false, false, 0, 0, 0)
     val newCollected = !current.isCollected
-    val newOffset = if (newCollected) 1 else 0
     return current.copy(
         isCollected = newCollected,
-        collectCountOffset = newOffset
+        collectCountOffset = binaryOffset(newCollected)
     )
+}
+
+fun mergeDetailInteractionState(ad: AdItem, entity: InteractionEntity?): AdItem {
+    val baseAd = MockData.allAds.find { it.id == ad.id } ?: ad
+    return mergeInteractionState(baseAd, entity).copy(
+        exposureCount = ad.exposureCount,
+        clickCount = ad.clickCount
+    )
+}
+
+private fun nextDisplayCount(count: Int, enabled: Boolean): Int {
+    val delta = if (enabled) 1 else -1
+    return (count + delta).coerceAtLeast(0)
+}
+
+private fun binaryOffset(enabled: Boolean): Int {
+    return if (enabled) 1 else 0
 }
 
 class FeedViewModel : ViewModel() {
 
     private val _uiState = MutableStateFlow(FeedUiState())
     val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
+
+    private val _detailAd = MutableStateFlow<AdItem?>(null)
+    val detailAd: StateFlow<AdItem?> = _detailAd.asStateFlow()
 
     // 统计数据仓库（Room 持久化实现）
     private val statisticsRepository: StatisticsRepository = RoomStatisticsRepository
@@ -87,6 +131,11 @@ class FeedViewModel : ViewModel() {
                             clickCount = ad.clickCount
                         )
                     })
+                }
+                _detailAd.value?.let { current ->
+                    interactionMap[current.id]?.let { entity ->
+                        _detailAd.value = mergeDetailInteractionState(current, entity)
+                    }
                 }
             }
         }
@@ -151,19 +200,52 @@ class FeedViewModel : ViewModel() {
         loadAds()
     }
 
+    fun loadDetailAd(adId: String) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val base = _uiState.value.ads.find { it.id == adId }
+                ?: MockData.allAds.find { it.id == adId }
+                ?: return@launch
+
+            val entity = AdApplication.database.interactionDao().getInteraction(adId)
+            val exposureCount = AdApplication.database.statisticEventDao().getExposureCount(adId)
+            val clickCount = AdApplication.database.statisticEventDao().getClickCount(adId)
+
+            _detailAd.value = mergeDetailInteractionState(
+                base.copy(exposureCount = exposureCount, clickCount = clickCount),
+                entity
+            )
+        }
+    }
+
+    fun clearDetailAd() {
+        _detailAd.value = null
+    }
+
     fun toggleLike(adId: String) {
+        _uiState.update { state ->
+            state.copy(ads = state.ads.map { ad ->
+                if (ad.id == adId) nextLikeDisplayState(ad) else ad
+            })
+        }
+        _detailAd.update { ad ->
+            if (ad?.id == adId) nextLikeDisplayState(ad) else ad
+        }
         viewModelScope.launch(Dispatchers.IO) {
             val dao = AdApplication.database.interactionDao()
             val entity = dao.getInteraction(adId)
-                ?: InteractionEntity(adId, false, false, 0, 0, 0)
-            val newLiked = !entity.isLiked
-            val newOffset = entity.likeCountOffset + (if (newLiked) 1 else -1)
-
-            dao.insertOrUpdate(entity.copy(isLiked = newLiked, likeCountOffset = newOffset))
+            dao.insertOrUpdate(nextLikeInteraction(entity, adId))
         }
     }
 
     fun toggleCollect(adId: String) {
+        _uiState.update { state ->
+            state.copy(ads = state.ads.map { ad ->
+                if (ad.id == adId) nextCollectDisplayState(ad) else ad
+            })
+        }
+        _detailAd.update { ad ->
+            if (ad?.id == adId) nextCollectDisplayState(ad) else ad
+        }
         viewModelScope.launch(Dispatchers.IO) {
             val dao = AdApplication.database.interactionDao()
             val entity = dao.getInteraction(adId)
@@ -177,6 +259,9 @@ class FeedViewModel : ViewModel() {
                 if (ad.id == adId) ad.copy(clickCount = ad.clickCount + 1) else ad
             })
         }
+        _detailAd.update { ad ->
+            if (ad?.id == adId) ad.copy(clickCount = ad.clickCount + 1) else ad
+        }
         // 同时持久化写入 Room 统计仓库
         recordStatEvent(adId, EventType.CLICK)
     }
@@ -187,6 +272,9 @@ class FeedViewModel : ViewModel() {
                 if (ad.id == adId) ad.copy(exposureCount = ad.exposureCount + 1) else ad
             })
         }
+        _detailAd.update { ad ->
+            if (ad?.id == adId) ad.copy(exposureCount = ad.exposureCount + 1) else ad
+        }
         // 同时持久化写入 Room 统计仓库
         recordStatEvent(adId, EventType.EXPOSURE)
     }
@@ -194,7 +282,10 @@ class FeedViewModel : ViewModel() {
     /** 向 Room 统计仓库写入事件（异步，不阻塞UI） */
     private fun recordStatEvent(adId: String, eventType: EventType) {
         viewModelScope.launch {
-            val ad = _uiState.value.ads.find { it.id == adId } ?: return@launch
+            val ad = _uiState.value.ads.find { it.id == adId }
+                ?: _detailAd.value?.takeIf { it.id == adId }
+                ?: MockData.allAds.find { it.id == adId }
+                ?: return@launch
             val event = StatisticEvent(
                 adId = adId,
                 tags = ad.tags,

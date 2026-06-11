@@ -10,6 +10,64 @@ import org.junit.Test
 
 class FeedInteractionStateTest {
     @Test
+    fun mergeDetailInteractionState_appliesInteractionToFallbackAd() {
+        val ad = testAd(likeCount = 20, collectCount = 10)
+        val entity = InteractionEntity(
+            adId = "ad-1",
+            isLiked = true,
+            isCollected = true,
+            likeCountOffset = 1,
+            collectCountOffset = 1,
+            shareCount = 0
+        )
+
+        val merged = mergeDetailInteractionState(ad, entity)
+
+        assertTrue(merged.isLiked)
+        assertEquals(21, merged.likeCount)
+        assertTrue(merged.isCollected)
+        assertEquals(11, merged.collectCount)
+    }
+
+    @Test
+    fun nextLikeDisplayState_likingDetailAdUpdatesStateAndCountImmediately() {
+        val next = nextLikeDisplayState(testAd(likeCount = 20))
+
+        assertTrue(next.isLiked)
+        assertEquals(21, next.likeCount)
+    }
+
+    @Test
+    fun nextCollectDisplayState_collectingDetailAdUpdatesStateAndCountImmediately() {
+        val next = nextCollectDisplayState(testAd(collectCount = 20))
+
+        assertTrue(next.isCollected)
+        assertEquals(21, next.collectCount)
+    }
+
+    @Test
+    fun nextLikeInteraction_likingNormalizesOffsetToOne() {
+        val next = nextLikeInteraction(
+            InteractionEntity("ad-1", false, false, 2, 0, 0),
+            adId = "ad-1"
+        )
+
+        assertTrue(next.isLiked)
+        assertEquals(1, next.likeCountOffset)
+    }
+
+    @Test
+    fun nextLikeInteraction_unlikingLegacyLikedStateDoesNotGoNegative() {
+        val next = nextLikeInteraction(
+            InteractionEntity("ad-1", true, false, 0, 0, 0),
+            adId = "ad-1"
+        )
+
+        assertFalse(next.isLiked)
+        assertEquals(0, next.likeCountOffset)
+    }
+
+    @Test
     fun mergeInteractionState_addsCollectOffsetToBaseCollectCount() {
         val ad = testAd(collectCount = 20)
         val entity = InteractionEntity(
@@ -79,7 +137,10 @@ class FeedInteractionStateTest {
         assertEquals(1, next.collectCountOffset)
     }
 
-    private fun testAd(collectCount: Int): AdItem {
+    private fun testAd(
+        likeCount: Int = 0,
+        collectCount: Int = 0
+    ): AdItem {
         return AdItem(
             id = "ad-1",
             type = AdType.LARGE_IMAGE,
@@ -87,6 +148,7 @@ class FeedInteractionStateTest {
             description = "测试描述",
             imageUrl = "https://example.com/a.jpg",
             channel = "精选",
+            likeCount = likeCount,
             collectCount = collectCount
         )
     }
