@@ -104,14 +104,7 @@ fun DetailScreen(
         LaunchedEffect(adItem.id) {
             if (adItem.aiInfo != null) detailViewModel.loadIntro(adItem)
         }
-
-        // 曝光统计：详情页内容默认100%可见，1秒后计入曝光（单会话去重）
-        // 与 Feed 列表使用相同的 ExposureDetector + ExposureTracker 规则
-        ExposureDetector(
-            adId = adItem.id,
-            visibleFraction = 1f,
-            onExposed = { viewModel.recordExposure(adItem.id) }
-        )
+        //详情页不计曝光，已删除
 
         LazyColumn(
             modifier = Modifier

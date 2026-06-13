@@ -31,24 +31,23 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.adfeed.data.model.AdItem
+import com.example.adfeed.data.model.SearchRecord
 import com.example.adfeed.data.remote.QwenApi
 import com.example.adfeed.data.repository.MockData
+import com.example.adfeed.viewmodel.FeedViewModel
 import kotlinx.coroutines.launch
 
-data class SearchRecord(
-    val query: String,
-    val reply: String,
-    val ads: List<AdItem>
-)
 
 @Composable
 fun AiFloatingBall(
-    onAdClick: (AdItem) -> Unit
+    viewModel: FeedViewModel,
+    onAdClick: (AdItem) -> Unit,
+    onAdExposure: (String) -> Unit
 ) {
     var expanded by remember { mutableStateOf(false) }
     var inputText by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(false) }
-    val searchHistory = remember { mutableStateListOf<SearchRecord>() }
+    val searchHistory by viewModel.aiHistory.collectAsState()
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
 
@@ -103,15 +102,45 @@ fun AiFloatingBall(
                         val json = org.json.JSONObject(response)
                         val ids = json.getJSONArray("ids")
                         val idList = (0 until ids.length()).map { ids.getString(it) }
+
                         val resultAds = MockData.allAds.filter { it.id in idList }
                         val reply = json.optString("reply", "为你找到以下广告")
-                        searchHistory.add(SearchRecord(query, reply, resultAds))
+
+                        // AI推荐曝光
+                        resultAds.forEach { ad ->
+                            onAdExposure(ad.id)
+                        }
+
+                        viewModel.addAiRecord(
+                            SearchRecord(
+                                query = query,
+                                reply = reply,
+                                ads = resultAds
+                            )
+                        )
+
                     } catch (e: Exception) {
-                        searchHistory.add(SearchRecord(query, response, emptyList()))
+
+                        viewModel.addAiRecord(
+                            SearchRecord(
+                                query = query,
+                                reply = response,
+                                ads = emptyList()
+                            )
+                        )
+
                     }
                 },
                 onFailure = {
-                    searchHistory.add(SearchRecord(query, "搜索出错，请重试", emptyList()))
+
+                    viewModel.addAiRecord(
+                        SearchRecord(
+                            query = query,
+                            reply = "搜索出错，请重试",
+                            ads = emptyList()
+                        )
+                    )
+
                 }
             )
             isLoading = false

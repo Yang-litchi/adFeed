@@ -6,6 +6,7 @@ import com.example.adfeed.AdApplication
 import com.example.adfeed.data.local.entity.InteractionEntity
 import com.example.adfeed.data.model.AdItem
 import com.example.adfeed.data.model.EventType
+import com.example.adfeed.data.model.SearchRecord
 import com.example.adfeed.data.model.StatisticEvent
 import com.example.adfeed.data.repository.MockData
 import com.example.adfeed.data.repository.RoomStatisticsRepository
@@ -96,6 +97,10 @@ class FeedViewModel : ViewModel() {
     val uiState: StateFlow<FeedUiState> = _uiState.asStateFlow()
 
     private val _detailAd = MutableStateFlow<AdItem?>(null)
+
+    private val _aiHistory = MutableStateFlow<List<SearchRecord>>(emptyList())
+    val aiHistory: StateFlow<List<SearchRecord>> = _aiHistory.asStateFlow()
+
     val detailAd: StateFlow<AdItem?> = _detailAd.asStateFlow()
 
     // 统计数据仓库（Room 持久化实现）
@@ -219,6 +224,16 @@ class FeedViewModel : ViewModel() {
 
     fun clearDetailAd() {
         _detailAd.value = null
+    }
+
+    fun addAiRecord(record: SearchRecord) {
+        _aiHistory.update {
+            it + record
+        }
+    }
+
+    fun clearAiHistory() {
+        _aiHistory.value = emptyList()
     }
 
     fun toggleLike(adId: String) {
