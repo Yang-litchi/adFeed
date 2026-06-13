@@ -37,7 +37,10 @@ import com.example.adfeed.data.model.AdType
 import com.example.adfeed.ui.ai.AiFloatingBall
 import com.example.adfeed.ui.components.ExposureDetector
 import com.example.adfeed.viewmodel.FeedViewModel
-
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInParent
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntOffset
 val CHANNELS = listOf("精选", "电商", "本地")
 private const val MAX_VISIBLE_TAGS = 10
 
@@ -54,6 +57,13 @@ fun FeedScreen(
     var showCustomTagInput by remember { mutableStateOf(false) }
     var customTagInput by remember { mutableStateOf("") }
 
+    var filterRowBottomPx by remember { mutableIntStateOf(0) }
+
+    val density = LocalDensity.current
+
+    val filterRowBottomDp = with(density) {
+        filterRowBottomPx.toDp()
+    }
     // 3页对应3个频道
     val pagerState = rememberPagerState(initialPage = 0, pageCount = { 3 })
 
@@ -127,7 +137,15 @@ fun FeedScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                    .height(48.dp)
+                    .padding(horizontal = 12.dp)
+                    .onGloballyPositioned { coordinates ->
+
+                        val y = coordinates.positionInParent().y
+
+                        filterRowBottomPx =
+                            (y + coordinates.size.height).toInt()
+                    },
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
@@ -317,7 +335,7 @@ fun FeedScreen(
                 .fillMaxWidth()
                 .align(Alignment.TopCenter)
                 .statusBarsPadding()
-                .padding(top = 97.dp)
+                .offset(y = filterRowBottomDp)
                 .zIndex(10f)
         ) {
             Surface(
