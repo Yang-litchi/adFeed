@@ -41,6 +41,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInParent
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
+import com.example.adfeed.data.repository.MockData
+
 val CHANNELS = listOf("精选", "电商", "本地")
 private const val MAX_VISIBLE_TAGS = 10
 
@@ -85,8 +87,8 @@ fun FeedScreen(
         }
     }
 
-    val availableTags = remember(uiState.ads) {
-        uiState.ads.flatMap { it.tags }
+    val availableTags = remember {
+        MockData.allAds.flatMap { it.tags }
             .groupingBy { it }
             .eachCount()
             .entries
