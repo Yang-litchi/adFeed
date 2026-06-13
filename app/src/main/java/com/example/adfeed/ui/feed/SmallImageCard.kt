@@ -16,6 +16,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.adfeed.data.model.AdItem
+import com.example.adfeed.ui.components.CollectButton
 import com.example.adfeed.ui.components.LikeButton
 import com.example.adfeed.ui.components.TagChip
 
@@ -99,6 +100,11 @@ fun SmallImageCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
+                    CollectButton(
+                        isCollected = ad.isCollected,
+                        count = ad.collectCount,
+                        onClick = onCollectClick
+                    )
                     LikeButton(
                         isLiked = ad.isLiked,
                         count = ad.likeCount,

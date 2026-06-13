@@ -20,6 +20,7 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
 import com.example.adfeed.data.model.AdItem
+import com.example.adfeed.ui.components.CollectButton
 import com.example.adfeed.ui.components.LikeButton
 
 @Composable
@@ -130,6 +131,11 @@ fun VideoCard(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End
                 ) {
+                    CollectButton(
+                        isCollected = ad.isCollected,
+                        count = ad.collectCount,
+                        onClick = onCollectClick
+                    )
                     LikeButton(
                         isLiked = ad.isLiked,
                         count = ad.likeCount,

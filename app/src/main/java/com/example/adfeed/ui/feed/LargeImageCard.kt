@@ -17,6 +17,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.example.adfeed.data.model.AdItem
+import com.example.adfeed.ui.components.CollectButton
 import com.example.adfeed.ui.components.LikeButton
 import com.example.adfeed.ui.components.TagChip
 
@@ -92,15 +93,11 @@ fun LargeImageCard(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    IconButton(onClick = onCollectClick) {
-                        Icon(
-                            imageVector = if (ad.isCollected) Icons.Filled.Bookmark
-                            else Icons.Outlined.BookmarkBorder,
-                            contentDescription = "收藏",
-                            tint = if (ad.isCollected) Color(0xFFFFAA00) else Color.Gray
-                        )
-                    }
-                    Spacer(modifier = Modifier.width(8.dp))
+                    CollectButton(
+                        isCollected = ad.isCollected,
+                        count = ad.collectCount,
+                        onClick = onCollectClick
+                    )
                     LikeButton(
                         isLiked = ad.isLiked,
                         count = ad.likeCount,
