@@ -185,7 +185,7 @@ flowchart LR
     Stats -->|"返回 / 右滑"| Detail
 ```
 
-亲中FeedViewModel在`AppNavigation()`中创建，传给`FeedScreen`和`DetailScreen`，详情页可以直接复用信息流中的广告状态，无需重新请求
+其中FeedViewModel在`AppNavigation()`中创建，传给`FeedScreen`和`DetailScreen`，详情页可以直接复用信息流中的广告状态，无需重新请求
 
 ### Application与Room初始化
 
@@ -324,32 +324,6 @@ ViewModel通过接口，数据来自Room
 
 
 
-
-
-采用 MVVM 架构设计。
-
-Data Layer
-
-* AdItem
-* AiInfo
-* MockData
-* QwenApi
-
-ViewModel Layer
-
-* FeedViewModel
-* DetailViewModel
-
-UI Layer
-
-* FeedScreen
-* DetailScreen
-* LargeImageCard
-* SmallImageCard
-* VideoCard
-* AiChatOverlay
-* SplashScreen
-
 ---
 
 ## 数据模型
@@ -470,7 +444,6 @@ v2.0:
 
 - Interaction交互操作也通过repository封装业务逻辑，使data层结构上达成统一
 - 将目前QwenApi的HttpURLConnection改为Retrofit，供后续AI功能扩展，使接口调用更规整
-- 
 
 ---
 
